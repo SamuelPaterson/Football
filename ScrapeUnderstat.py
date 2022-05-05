@@ -1,5 +1,6 @@
 """
-Scrape understat, convert to SQL DB then save.
+Scrape understat, convert to SQLite DB then save.
+Drops useless information from DB such as understat's IDs.
 
 Understat URLs are formatted as following:
     for players:    understat.com/player/"UNIQUE NUMBER CODE"
@@ -16,15 +17,11 @@ import json
 import sqlite3
 import os
 
-dir_name = os.path.dirname(__file__)
-
-base_url = "https://understat.com/"
-extension = "player"
-code = "447"
-understat_url = base_url + extension + "/" + code
-
-
-def get_database(understat_url):
+def get_database():
+    base_url = "https://understat.com/"
+    extension = input("Enter either: player, team or match:     ")
+    code = "8260"
+    understat_url = base_url + extension + "/" + code
     res = requests.get(understat_url)
     soup = BeautifulSoup(res.content, "lxml")
     scripts = soup.find_all("script")
@@ -40,6 +37,10 @@ def get_database(understat_url):
 
     if extension == "player":
         get_player(string_list, soup)
+    if extension == "team":
+        get_team()
+    if extension == "match":
+        get_match()
 
 
 '''
@@ -51,35 +52,45 @@ If getting stats for a player. 5 Databases
 4 = Ad data for website (ignore)
 '''
 def get_player(string_list, soup):
+    dir_name = os.path.dirname(__file__)
     title = str(soup.find("title"))[7:-53]
-    player_name = title[0:title.index("|") - 1]
-    team_name = title[title.index("|") + 2:len(title)]
+    player_name = title[0:title.index("|") - 1].replace(" ", "")
+    team_name = title[title.index("|") + 2:len(title)].replace(" ", "")
     index = 0
     for string in string_list:
         if len(string) > 0:
             data = json.loads(string)  # Convert from string into json
             df = pd.json_normalize(data)
             df = df.applymap(str)
-            path = os.path.join(dir_name, "Databases", team_name, player_name)
+            path = os.path.join(dir_name, "Databases", "Players", team_name, player_name)
             if not os.path.exists(path):
                 os.makedirs(path)
             if index == 0:
-                db_name = 'All Seasons (ignore for now)'
+                db_name = player_name + '_All_Seasons_(ignore for now)'
             elif index == 1:
-                db_name = 'Stats Per Min'
+                db_name = player_name + '_Stats_Per_Min'
             elif index == 2:
-                db_name = 'All Shots Data'
+                db_name = player_name + '_All_Shots_Data'
+                df = df.drop(columns=['id', 'player_id', 'season', 'match_id'])
             elif index == 3:
-                db_name = 'All Game Data'
+                db_name = player_name + '_All_Game_Data'
             elif index == 4:
-                db_name = 'Ad Data (ignore)'  # Remove after testing
+                db_name = player_name + '_Ad_Data_(ignore)'  # Remove after testing
             else:
                 db_name = index
             path = os.path.join(path, db_name + '.db')
+            print(path)
             conn = sqlite3.connect(path)
-            df.to_sql(db_name, conn)
+            df.to_sql(db_name, conn, if_exists='replace')
             index = index + 1
+    conn.close()
+
+def get_team():
+    print("Team search not implemented yet")
+
+def get_match():
+    print("Match search not implemented yet")
 
 
 if __name__ == "__main__":
-    get_database(understat_url)
+    get_database()
