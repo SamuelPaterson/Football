@@ -6,6 +6,7 @@ Understat URLs are formatted as following:
     for players:    understat.com/player/"UNIQUE NUMBER CODE"
     for teams:      understat.com/team/"TEAM_NAME"/"SEASON STARTING YEAR"
     for games:      understat.com/match/"UNIQUE NUMBER CODE"
+    for leagues:    understat.com/league/"LEAGUE NAME"/"SEASON START YEAR (if blanck current)"
 
 Currently, getting useless database under player remove after testing and delete from files.
 """
@@ -19,9 +20,13 @@ import os
 
 def get_database():
     base_url = "https://understat.com/"
-    extension = input("Enter either: player, team or match:     ")
-    code = "8260"
-    understat_url = base_url + extension + "/" + code
+    extension = "league"
+    code = "Serie_A"
+    year = "2021"
+    if extension == "league":
+        understat_url = base_url + extension + "/" + code + "/" + year
+    else:
+        understat_url = base_url + extension + "/" + code
     res = requests.get(understat_url)
     soup = BeautifulSoup(res.content, "lxml")
     scripts = soup.find_all("script")
@@ -41,6 +46,9 @@ def get_database():
         get_team()
     if extension == "match":
         get_match()
+    if extension == "league":
+        get_league(string_list, soup, code, year)
+
 
 
 '''
@@ -75,9 +83,7 @@ def get_player(string_list, soup):
             elif index == 3:
                 db_name = player_name + '_All_Game_Data'
             elif index == 4:
-                db_name = player_name + '_Ad_Data_(ignore)'  # Remove after testing
-            else:
-                db_name = index
+                break
             path = os.path.join(path, db_name + '.db')
             print(path)
             conn = sqlite3.connect(path)
@@ -90,6 +96,46 @@ def get_team():
 
 def get_match():
     print("Match search not implemented yet")
+
+'''
+Get_league returns 4 DB
+0 = Game results, including xg. for the season
+1 = all teams there id and history (all in one row)
+2 = ALL PLAYER DATA. Inc name id, season goals, xg ect.
+3 = Ad data
+'''
+def get_league(string_list, soup, code, year):
+    dir_name = os.path.dirname(__file__)
+    index = 0
+    for string in string_list:
+        if len(string) > 0:
+            data = json.loads(string)  # Convert from string into json
+            df = pd.json_normalize(data)
+            df = df.applymap(str)
+            path = os.path.join(dir_name, "Databases", "Leagues", code, year)
+            if not os.path.exists(path):
+                os.makedirs(path)
+            if index == 0:
+                db_name = "Game_Results"
+            if index == 1:
+                db_name = "Teams_History"
+            if index == 2:
+                db_name = "All_Player_Data"
+                path = os.path.join(dir_name, "Databases", year)
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                path = os.path.join(path, "All_Player_Data.db")
+                print(path)
+                conn = sqlite3.connect(path)
+                df.insert(14, 'League', code)
+                df.to_sql(db_name, conn, if_exists='append')
+                break
+            path = os.path.join(path, db_name + '.db')
+            print(path)
+            conn = sqlite3.connect(path)
+            df.to_sql(db_name, conn, if_exists='replace')
+            index = index+1
+    conn.close()
 
 
 if __name__ == "__main__":
