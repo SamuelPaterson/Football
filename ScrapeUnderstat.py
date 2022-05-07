@@ -20,8 +20,8 @@ import os
 
 def get_database():
     base_url = "https://understat.com/"
-    extension = "league"
-    code = "Serie_A"
+    extension = "player"
+    code = "618"
     year = "2021"
     if extension == "league":
         understat_url = base_url + extension + "/" + code + "/" + year
