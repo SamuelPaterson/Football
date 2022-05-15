@@ -18,15 +18,13 @@ import json
 import sqlite3
 import os
 
-def get_database():
+def get_database(extension, code):
     base_url = "https://understat.com/"
-    extension = "player"
-    code = "2098"
-    year = "2021"
     if extension == "league":
-        understat_url = base_url + extension + "/" + code + "/" + year
+        year = input("Season start year:  ")
+        understat_url = base_url + extension + "/" + str(code) + "/" + year
     else:
-        understat_url = base_url + extension + "/" + code
+        understat_url = base_url + extension + "/" + str(code)
     res = requests.get(understat_url)
     soup = BeautifulSoup(res.content, "lxml")
     scripts = soup.find_all("script")
