@@ -3,7 +3,7 @@ Take shot data from SQLite database and plot as a shotmap.
 If database doesn't exist creates one.
 
 Currently doesn't look good for players who have taken many shots.
-Takes no extra arguments, just plot all shots a player has ever taken.
+Takes no extra arguments, just plot all shots a player has ever taken in the top 5 european leagues.
 """
 import os
 import sqlite3
@@ -27,7 +27,10 @@ def plot_shotmap():
 
         data = pd.read_sql(sql_query, conn)
         conn.close()
-        code = int(data.id)
+        try:
+            code = int(data.id)
+        except:
+            code = input("Player Code:  ")
         get_database("player", code)
 
     conn = sqlite3.connect(os.path.join(path, player.replace(" ", "") + "_All_Shots_Data.db"))
